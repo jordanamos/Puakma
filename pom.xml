@@ -5,10 +5,14 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.puakma</groupId>
-    <artifactId>Puakma</artifactId>
-    <version>1.0.0</version>
-
+    <artifactId>puakma</artifactId>
+    <version>6.0.37</version>
+    <packaging>jar</packaging>
+    
     <properties>
+        <puakma.build>1098</puakma.build>
+        <puakma.buildDate>24 May 2024</puakma.buildDate>
+        <puakma.versionType>Enterprise Server Platform</puakma.versionType>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
@@ -51,7 +55,7 @@
                 <artifactId>maven-assembly-plugin</artifactId>
                 <version>3.6.0</version>
                 <configuration>
-                    <finalName>puakma</finalName>
+                    <finalName>${project.artifactId}-${project.version}</finalName>
                     <appendAssemblyId>false</appendAssemblyId>
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
