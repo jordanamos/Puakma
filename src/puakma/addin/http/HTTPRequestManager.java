@@ -517,12 +517,6 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 				doPost(m_sInboundPath);
 				bRequestProcessed=true;
 			}
-			if(!bRequestProcessed && m_sInboundMethod.equalsIgnoreCase("OPTIONS")) 
-			{
-				m_bDataPosted = false;
-				doOptions(m_sInboundPath);
-				bRequestProcessed=true;
-			}
 			//treat as post, CardDav etc extensively use OPTIONS
 			//allow other types eg PROPFIND, SEARCH, PUT
 			String sAllowMethods[] = m_http_server.getAllowedHTTPMethods();
@@ -956,38 +950,6 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 			}
 		}//! starts with 'open'
 		doGet(docIn, document_path, bForceClientPull, false);
-	}
-
-	/**
-	 * Called for a OPTIONS
-	 *
-	 */
-	private void doOptions(String document_path)
-	{
-		//m_pSystem.doDebug(0, "doPost() " + document_path +" " + (System.currentTimeMillis()-m_lStart) + "ms", this);
-
-		m_pSystem.doDebug(pmaLog.DEBUGLEVEL_FULL, "doOptions()", this);
-		RequestPath rPath = new RequestPath(document_path);
-
-		String sDisabled = getAppParam(m_pSession, "DisableApp", rPath.Group, rPath.Application);
-		if(sDisabled!=null && sDisabled.equals("1"))
-		{
-			HTMLDocument docErr = new HTMLDocument(m_pSession);
-			docErr.rPath = rPath;
-			sendPuakmaError(RET_FORBIDDEN, docErr);
-			return;
-		}
-		ArrayList extra_headers = new ArrayList();
-		// Allow all origins
-		extra_headers.add("Access-Control-Allow-Origin: *");
-		extra_headers.add("Access-Control-Allow-Methods: " + String.join(", ", m_http_server.getAllowedHTTPMethods())); 
-		  // Allow all headers
-		extra_headers.add("Access-Control-Allow-Headers: *");
-		 // Allow credentials (cookies, HTTP auth)
-		extra_headers.add("Access-Control-Allow-Credentials: true");
-		extra_headers.add("Access-Control-Max-Age: 3600");  // Cache preflight response for 1 hour (3600 seconds)
-
-		sendHTTPResponse(RET_OK, "OK", extra_headers, HTTP_VERSION, null, null);
 	}
 
 	/**
