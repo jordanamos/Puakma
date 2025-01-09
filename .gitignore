@@ -1,2 +1,4 @@
 .DS_Store
 bin/puakma
+build/
+.settings/
