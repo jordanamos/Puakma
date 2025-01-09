@@ -171,7 +171,7 @@ public class HTMLControl
 		}
 
 		HTMLTagTokenizer st = new HTMLTagTokenizer(sTagHTML);
-		ArrayList arr = new ArrayList();
+		ArrayList<String> arr = new ArrayList<String>();
 		while(st.hasMoreTokens())
 		{
 			String szItem = (String)st.nextElement();
@@ -184,7 +184,7 @@ public class HTMLControl
 	/**
 	 *
 	 */
-	private void processItem(String szType, ArrayList al)
+	private void processItem(String szType, ArrayList<String> al)
 	{
 		String szSize;
 		Type = getTypeFromString(szType);
@@ -257,7 +257,7 @@ public class HTMLControl
 	private void setChoiceArray(String sChoices)
 	{
 		if(sChoices==null || sChoices.length()==0) return;
-		ArrayList ar = Util.splitString(sChoices, ',');
+		ArrayList<String> ar = Util.splitString(sChoices, ',');
 
 		pDocument.setItemChoices(Name, Util.objectArrayToStringArray(ar.toArray()));
 	}
@@ -301,7 +301,7 @@ public class HTMLControl
 	 * Removes an entry from the array. the idea is we remove the elements the
 	 * class uses, which should leave the javascript & special tags
 	 */
-	private void dropArrayValue(String szKey, ArrayList al)
+	private void dropArrayValue(String szKey, ArrayList<String> al)
 	{
 		int i;
 		String szValue;
@@ -348,7 +348,7 @@ public class HTMLControl
 
 
 		HTMLTagTokenizer st = new HTMLTagTokenizer(OtherOptions);
-		ArrayList arr = new ArrayList();
+		ArrayList<String> arr = new ArrayList<String>();
 		while(st.hasMoreTokens())
 		{
 			String szItem = (String)st.nextElement();      
@@ -418,7 +418,7 @@ public class HTMLControl
 		 */
 		boolean bFound = false;
 		HTMLTagTokenizer st = new HTMLTagTokenizer(OtherOptions);
-		ArrayList arr = new ArrayList();
+		ArrayList<String> arr = new ArrayList<String>();
 		while(st.hasMoreTokens())
 		{
 			String sItem = (String)st.nextElement();   
@@ -449,7 +449,7 @@ public class HTMLControl
 	public void dropItemOption(String sOptionName)
 	{
 		HTMLTagTokenizer st = new HTMLTagTokenizer(OtherOptions);
-		ArrayList arr = new ArrayList();
+		ArrayList<String> arr = new ArrayList<String>();
 		while(st.hasMoreTokens())
 		{
 			String sItem = (String)st.nextElement();
@@ -464,7 +464,7 @@ public class HTMLControl
 	 * Get a value from a pair ie Name="xxxx" where szKey="Name" will
 	 * return xxxx, stripping off the quotes (if any)
 	 */
-	private String getArrayValue(String sKey, ArrayList al, boolean bAllowReturnNull)
+	private String getArrayValue(String sKey, ArrayList<String> al, boolean bAllowReturnNull)
 	{
 		int i;
 		String szValue;
@@ -659,7 +659,7 @@ public class HTMLControl
 		if(di instanceof DocumentMultiItem)
 		{
 			DocumentMultiItem dmi = (DocumentMultiItem)di;
-			Vector v = dmi.getValues();
+			Vector<String> v = dmi.getValues();
 			if(v!=null)
 			{
 				sValues = new String[v.size()];
@@ -1142,7 +1142,7 @@ public class HTMLControl
 		if(sChoices!=null && sChoices.length>0)
 		{
 			HTMLControlChoice choices[] = HTMLControlChoice.makeChoiceArray(sChoices, null);
-			ArrayList arrItems = new ArrayList(choices.length);
+			ArrayList<String> arrItems = new ArrayList<String>(choices.length);
 			try{ iCols=Integer.parseInt(Columns); }catch(Exception e){}
 			if(iCols<1) iCols = 1;
 

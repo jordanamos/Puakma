@@ -53,7 +53,7 @@ public class HTMLDocument extends Document implements Cloneable
 	private boolean m_bHasRichItems=false;
 	public DesignElement designObject=new DesignElement();
 	private HTTPSessionContext m_sess;
-	private Vector m_vExtraHeaders=null;  
+	private Vector<String> m_vExtraHeaders=null;  
 	private boolean m_bDataPosted = false;
 	private ArrayList m_arrParsedDocParts = null;
 
@@ -611,8 +611,8 @@ public class HTMLDocument extends Document implements Cloneable
 				}
 			}
 		}//for
-		
-		
+
+
 		if(!bFound) designObject.setHTMLControl(sItemName, ctrl);*/
 		designObject.setHTMLControl(sItemName, ctrl);
 	}
@@ -827,7 +827,7 @@ public class HTMLDocument extends Document implements Cloneable
 	 * TODO: possible make this account for multiple split lines?
 	 * Does any browser do this??
 	 */
-	public void setHTTPFields(ArrayList v)
+	public void setHTTPFields(ArrayList<String> v)
 	{				
 		for(int i=0; i<v.size(); i++)
 		{
@@ -973,7 +973,7 @@ public class HTMLDocument extends Document implements Cloneable
 	 */
 	public String makeKeywordChoices(String sKey, boolean bSortByValue)
 	{
-		ArrayList vReturn=null;
+		ArrayList<String> vReturn=null;
 		Connection cxSys=null;
 		StringBuilder sbReturn=null;
 		String szAppGroup=rPath.Group, szApplication=rPath.Application;
@@ -997,7 +997,7 @@ public class HTMLDocument extends Document implements Cloneable
 			ResultSet RS = Stmt.executeQuery(szQuery);
 			while(RS.next())
 			{
-				if(vReturn==null) vReturn = new ArrayList();
+				if(vReturn==null) vReturn = new ArrayList<String>();
 				vReturn.add(RS.getString("Data"));
 			}
 			RS.close();
@@ -1031,7 +1031,7 @@ public class HTMLDocument extends Document implements Cloneable
 	 */
 	public String[] makeKeywordChoicesArray(String sKey, boolean bSortByValue)
 	{
-		ArrayList vReturn=null;
+		ArrayList<String> vReturn=null;
 		Connection cxSys=null; 
 		Statement stmt = null;
 		ResultSet rs = null;
@@ -1057,7 +1057,7 @@ public class HTMLDocument extends Document implements Cloneable
 			rs = stmt.executeQuery(szQuery);
 			while(rs.next())
 			{
-				if(vReturn==null) vReturn = new ArrayList();
+				if(vReturn==null) vReturn = new ArrayList<String>();
 				vReturn.add(rs.getString("Data"));
 			}
 		}
@@ -1080,7 +1080,7 @@ public class HTMLDocument extends Document implements Cloneable
 	}
 
 
-	public Vector getExtraHeaders() 
+	public Vector<String> getExtraHeaders() 
 	{
 		return m_vExtraHeaders;
 	} 
@@ -1123,7 +1123,7 @@ public class HTMLDocument extends Document implements Cloneable
 		String sNewEntry = sName + ": " + sValue;
 		if(m_vExtraHeaders==null) 
 		{
-			m_vExtraHeaders = new Vector();
+			m_vExtraHeaders = new Vector<String>();
 			m_vExtraHeaders.add(sNewEntry);
 			return;
 		}
