@@ -463,11 +463,11 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 				m_pSystem.doError("HTTPRequest.SessionLimitReached", new String[]{m_pSystem.getSessionCount()+""}, this);
 				ArrayList<String> extra_headers = new ArrayList<String>();
 				String szRedirect = m_http_server.m_sHTTPMaxSessionRedirect;
-				if(szRedirect.indexOf("://")>0 && szRedirect.toLowerCase().startsWith("http"))
+				if(szRedirect!=null && szRedirect.indexOf("://")>0) //&& szRedirect.toLowerCase().startsWith("http"))
 				{
 					//302 redirect to another host
 					extra_headers.add("Location: " + szRedirect);
-					sendHTTPResponse(RET_SEEOTHER, /*"Redirected to: <a href=\"" + szRedirect + "\">" + szRedirect + "</a>"*/"Moved", extra_headers, HTTP_VERSION, "text/html", null);
+					sendHTTPResponse(RET_SEEOTHER, "Moved", extra_headers, HTTP_VERSION, "text/html", null);
 				}
 				else
 				{
@@ -1054,8 +1054,9 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 					document_path = szDefaultURL;
 				else
 				{
-					String sURL = szDefaultURL.toLowerCase();
-					if(sURL.startsWith("http:") || sURL.startsWith("https:") || sURL.startsWith("ftp:")) //full 302 redirect
+					//String sURL = szDefaultURL.toLowerCase();
+					//if(sURL.startsWith("http:") || sURL.startsWith("https:") || sURL.startsWith("ftp:")) //full 302 redirect
+					if(szDefaultURL.indexOf("://")>0) //eg https://hostname
 					{
 						ArrayList<String> extra_headers = new ArrayList<String>();
 						extra_headers.add("Location: " + szDefaultURL);
@@ -1077,8 +1078,9 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 		if(szRedirectURL!=null)
 		{
 			ArrayList<String> extra_headers = new ArrayList<String>();
+			/*
 			String sURL = szRedirectURL.toLowerCase();
-			if(sURL.startsWith("http:") || sURL.startsWith("https:") || sURL.startsWith("ftp:")) //full 302 redirect
+			if(sURL.startsWith("http:") || sURL.startsWith("https:") || sURL.startsWith("ftp:")) //full 302 redirect			
 			{          
 				extra_headers.add("Location: " + szRedirectURL);
 			}
@@ -1087,7 +1089,8 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 				String sProto = null;
 				if(m_bSecure) sProto = "https://"; else sProto = "http://"; //assume must be http of some sort
 				extra_headers.add("Location: " + sProto + m_sRequestedHost + szRedirectURL);
-			}          
+			} */
+			extra_headers.add("Location: " + szRedirectURL);
 			sendHTTPResponse(RET_SEEOTHER, "Moved", extra_headers, HTTP_VERSION, null, null);
 			return;        
 		}
@@ -1142,9 +1145,11 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 				document_path += rPath.Parameters;
 				rPath = new RequestPath(document_path);
 				ArrayList<String> extra_headers = new ArrayList<String>();
-				String sProto = null;
+				/*String sProto = null;
 				if(m_bSecure) sProto = "https://"; else sProto = "http://"; //assume must be http of some sort
-				extra_headers.add("Location: " + sProto + m_sRequestedHost + document_path);				
+				extra_headers.add("Location: " + sProto + m_sRequestedHost + document_path);	
+				*/
+				extra_headers.add("Location: " + document_path);
 				sendHTTPResponse(RET_SEEOTHER, "Moved", extra_headers, HTTP_VERSION, "text/html", null);
 				return;
 			}
@@ -1156,9 +1161,9 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 			if(sForceSecureConnectionParam != null && sForceSecureConnectionParam.equals("1"))
 			{
 				m_pSystem.doDebug(pmaLog.DEBUGLEVEL_STANDARD, "Secure connection is required: '%s'", new String[]{document_path}, m_pSession);
-				ArrayList<String> extra_headers = new ArrayList<String>();
+				ArrayList<String> extra_headers = new ArrayList<String>();				
 				String sProto = "https://";
-				extra_headers.add("Location: " + sProto + m_sRequestedHost + document_path);				
+				extra_headers.add("Location: " + sProto + m_sRequestedHost + document_path);					
 				sendHTTPResponse(RET_SEEOTHER, "SSL Required", extra_headers, HTTP_VERSION, "text/html", null);
 				return;
 			}
@@ -1297,6 +1302,7 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 					extra_headers.add(sExpires);
 				}
 			}
+			addCacheControlHeader(null, extra_headers);
 		}//last modified and expires block
 
 
@@ -1312,15 +1318,17 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 					docHTML.getContentType(), null);
 			break;
 		case RET_SEEOTHER: //allow for relative paths, full incl. http://, and on server /path.pma
-			String szLocation = m_NewLocation;
+			/*String szLocation = m_NewLocation;
 			if(szLocation.indexOf("://")<0)
 			{
-				if(szLocation.charAt(0)=='/') //docHTML.getItemValue("@Host")
+				if(szLocation.charAt(0)=='/')
 					szLocation = m_sHTTPURLPrefix + "://" + m_sRequestedHost + szLocation;
 				else
 					szLocation = m_sHTTPURLPrefix + "://" + m_sRequestedHost + '/' + szLocation;
 			}
 			extra_headers.add("Location: " + szLocation);
+			*/
+			extra_headers.add("Location: " + m_NewLocation);
 			sendHTTPResponse(iHTTPReplyCode, "Moved", extra_headers, HTTP_VERSION, docHTML.getContentType(), docHTML.getContent());
 			break;
 		case RET_FILENOTFOUND:
@@ -1394,8 +1402,8 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 
 		long lStart = System.currentTimeMillis();
 		//guess that means we're after a page, action or something
-		int RequestReturnCode = processDesignElementRequest(document_path, docHTML, bForceClientPull, bByPassSecurity);
-		if(RequestReturnCode==RET_FILENOTFOUND || RequestReturnCode==RET_FORBIDDEN) return RequestReturnCode;
+		int iRequestReturnCode = processDesignElementRequest(document_path, docHTML, bForceClientPull, bByPassSecurity);
+		if(iRequestReturnCode==RET_FILENOTFOUND || iRequestReturnCode==RET_FORBIDDEN) return iRequestReturnCode;
 
 		if(docHTML.designObject!=null && docHTML.designObject.getDesignType()==DesignElement.DESIGN_TYPE_BUSINESSWIDGET)
 		{
@@ -1407,7 +1415,7 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 		}
 
 
-		if((RequestReturnCode!=RET_SEEOTHER || !bGet) && RequestReturnCode!=RET_NOT_MODIFIED)
+		if((iRequestReturnCode!=RET_SEEOTHER || !bGet) && iRequestReturnCode!=RET_NOT_MODIFIED)
 		{
 			docHTML.prepare();
 			//System.out.println(docHTML.toString());
@@ -1427,7 +1435,7 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 			if(act_return!=null && act_return.RedirectTo!=null && act_return.RedirectTo.length()!=0)
 			{
 				m_NewLocation = act_return.RedirectTo;
-				RequestReturnCode=RET_SEEOTHER;
+				iRequestReturnCode=RET_SEEOTHER;
 			}
 			else
 			{
@@ -1462,7 +1470,7 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 			}//no action redirect
 		}// !see other
 
-		return RequestReturnCode;
+		return iRequestReturnCode;
 	}
 
 	/**
@@ -1815,7 +1823,7 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 			Date dtExpires = Util.adjustDate(new Date(), 0, 0, 0, 0, 0, iSeconds);
 			String sExpires = "Expires: " + puakma.util.Util.formatDate(dtExpires, LAST_MOD_DATE, Locale.UK, m_tzGMT);
 			extra_headers.add(sExpires);
-
+			addCacheControlHeader(null, extra_headers);
 
 			String sReply = "";
 			if(iErrCode==RET_OK) sReply="OK";
@@ -2133,7 +2141,8 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 			byte bufSecret[] = makeWebSSOSecret();          
 			ltpa.setExpiryDate(getLtpaSessionExpiryDate());
 			//this domain thing may not be right - what about multi-homed servers?? !!
-			String sLtpaCookie = ltpa.getAsCookie(bufSecret, sPath, m_pSystem.getSystemProperty("WEBSSODomain"), false, m_pSession.getSSOExpiryDate());
+			boolean bIsSecure = Util.toInteger(m_pSystem.getSystemProperty("WEBSSOCookieSecure"))==1;
+			String sLtpaCookie = ltpa.getAsCookie(bufSecret, sPath, m_pSystem.getSystemProperty("WEBSSODomain"), bIsSecure, m_pSession.getSSOExpiryDate(), true);
 			//m_pSystem.doDebug(0, sLtpaCookie, this);
 			extra_headers.add("Set-Cookie: "+sLtpaCookie);
 			//System.out.println(sLtpaCookie);
@@ -2363,18 +2372,11 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 
 
 			if(!m_sInboundMethod.equalsIgnoreCase("HEAD") && http_code!=RET_NOT_MODIFIED)
-			{
-				//System.out.println("here2");
-				//int len=MAX_CHUNK;
-				//long lContentLength = ((lLastByteInRange-lFirstByteInRange)+1);
-				long lTotalOut=0;
-				//if(lContentLength<MAX_CHUNK) len = lContentLength;
-				byte bufOutput[] = new byte[MAX_CHUNK];
-				//	if(m_sInboundPath!=null && m_sInboundPath.indexOf(".mp4")>0) m_pSystem.doDebug(0, http_code + " " + http_code_string + " ["+sRange+"] firstbyte="+lFirstByteInRange+" lastbyte="+lLastByteInRange + " contentlen=" + iContentLength +" stream len="+lStreamLengthBytes + " " + m_sInboundPath, this);
-
+			{				
+				long lTotalOut=0;				
+				byte bufOutput[] = new byte[MAX_CHUNK];				
 				is.skip(lFirstByteInRange);
 
-				//while((len=is.available()) > 0)
 				while(is.available() > 0)
 				{
 					int iRead = is.read(bufOutput);
@@ -2725,7 +2727,7 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 		{
 			String sRedirect = document.getItemValue(Document.PAGE_REDIRECT_ITEM);
 			if(sRedirect==null || sRedirect.trim().length()==0) sRedirect = sRequestURI;      
-			document.rPath = new RequestPath(sRedirect);//new RequestPath(document.getItemValue(Document.PAGE_REDIRECT_ITEM));
+			document.rPath = new RequestPath(sRedirect);
 			if(document.rPath.Action.equalsIgnoreCase(DesignElement.PARAMETER_SAVEPAGE)) document.rPath = new RequestPath(document.rPath.getPathToApplication());
 			sRequestURI = document.rPath.getFullPath();
 		}
@@ -2863,19 +2865,47 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 			if(bIsResource)
 			{
 				Date dtLastModified = design.getLastModified();
-
+/*
 				Date dtExpires = new Date();
 				long lDiff = (System.currentTimeMillis() - dtLastModified.getTime()) / 2;
 				if(lDiff<0) lDiff = 0;
 				if(lDiff>0) dtExpires = Util.adjustDate(dtExpires, 0, 0, 0, 0, 0, (int) (lDiff/1000) );
+				*/
 				String sLastGMTMod = Util.formatDate(dtLastModified, LAST_MOD_DATE, Locale.UK, m_tzGMT);
 				document.setExtraHeaderValue("Last-Modified", sLastGMTMod, true);
+				
+				int iSeconds = (int)Math.abs((System.currentTimeMillis() - dtLastModified.getTime())/1000);
+				iSeconds = iSeconds/2; //set expiry to half the time since it was last modified
+				int iMaxEpirySeconds = m_http_server.getMaxExpirySeconds();
+				if(iMaxEpirySeconds>=0 && iSeconds>iMaxEpirySeconds) iSeconds = iMaxEpirySeconds;
+				Date dtExpires = Util.adjustDate(new Date(), 0, 0, 0, 0, 0, iSeconds);
+				
 				String sExpiresGMT = Util.formatDate(dtExpires, LAST_MOD_DATE, Locale.UK, m_tzGMT);
 				document.setExtraHeaderValue("Expires", sExpiresGMT, true);
+				
+				addCacheControlHeader(document, null);
 			}
 			RequestReturnCode = RET_OK;
 		}
 		return RequestReturnCode;
+	}
+	
+	private void addCacheControlHeader(HTMLDocument document, ArrayList<String> headers)
+	{
+		int iMaxEpirySeconds = m_http_server.getMaxExpirySeconds();
+		//Cache-Control: max-age=533280
+		String sCacheValue = "max-age="+iMaxEpirySeconds + " must-revalidate";
+		
+		if(document!=null)
+		{			
+			document.setExtraHeaderValue("Cache-Control", sCacheValue, true);
+		}
+		
+		if(headers!=null && Util.getMIMELine(headers, "Cache-Control")==null)
+		{
+			headers.add("Cache-Control: " + sCacheValue);
+		}
+		
 	}
 
 	/**

@@ -1,8 +1,8 @@
 mvn install:install-file \
-   -Dfile="lib/json-20110712.jar" \
+   -Dfile="lib/json-20241224.jar" \
    -DgroupId="org.json" \
    -DartifactId="json" \
-   -Dversion="20110712" \
+   -Dversion="20241224" \
    -Dpackaging="jar" \
    -DgeneratePom=true;
 
