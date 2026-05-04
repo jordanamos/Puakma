@@ -407,12 +407,12 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 			m_sIfNoneMatch = Util.getMIMELine(m_environment_lines, "If-None-Match");
 
 			//if the client says close the connection, then close it.
-			String szCloseConnection = Util.getMIMELine(m_environment_lines, "Connection");
-			if(szCloseConnection!=null && szCloseConnection.equalsIgnoreCase("close")) 
+			String sCloseConnection = Util.getMIMELine(m_environment_lines, "Connection");
+			if(sCloseConnection!=null && sCloseConnection.equalsIgnoreCase("close")) 
 				m_bCloseConnection=true;
 			else
 			{
-				if(szCloseConnection==null && m_sHTTPVersion.equals("HTTP/1.0")) m_bCloseConnection=true;
+				if(sCloseConnection==null && m_sHTTPVersion.equals("HTTP/1.0")) m_bCloseConnection=true;
 			}
 
 			//if(m_http_server.m_bLogInbound) m_iInboundSize = HTTPServer.getInboundRequestSize(m_http_request_line, m_environment_lines);
@@ -1268,6 +1268,7 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 		docHTML.setCookiesInHTTPHeader(extra_headers); //copy from doc to arraylist
 		if(docHTML.designObject!=null && !bNotModified) 
 		{
+			boolean bIsCacheNoStore = false;
 			//don't bother sending a last modified or expires
 			int iDesignType = docHTML.designObject.getDesignType(); 
 			if(iDesignType == DesignElement.DESIGN_TYPE_RESOURCE)
@@ -1288,6 +1289,7 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 			if(iDesignType == DesignElement.DESIGN_TYPE_PAGE || 
 					iDesignType == DesignElement.DESIGN_TYPE_ACTION)
 			{   
+				bIsCacheNoStore = true;
 				Date dtNow = new Date();
 				String sDate = Util.formatDate(dtNow, LAST_MOD_DATE, Locale.UK, m_tzGMT);
 
@@ -1302,7 +1304,7 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 					extra_headers.add(sExpires);
 				}
 			}
-			addCacheControlHeader(null, extra_headers);
+			addCacheControlHeader(null, extra_headers, bIsCacheNoStore);
 		}//last modified and expires block
 
 
@@ -1823,7 +1825,7 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 			Date dtExpires = Util.adjustDate(new Date(), 0, 0, 0, 0, 0, iSeconds);
 			String sExpires = "Expires: " + puakma.util.Util.formatDate(dtExpires, LAST_MOD_DATE, Locale.UK, m_tzGMT);
 			extra_headers.add(sExpires);
-			addCacheControlHeader(null, extra_headers);
+			addCacheControlHeader(null, extra_headers, false);
 
 			String sReply = "";
 			if(iErrCode==RET_OK) sReply="OK";
@@ -2296,14 +2298,10 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 
 							//System.out.println("request length " + iRequestLength);
 							byte[] output = new byte[MAX_CHUNK];
-							while((len=fin.available()) > 0 && iWrote<lRequestLength)
+							int iRead;
+							while(iWrote<lRequestLength && (iRead=fin.read(output)) > 0)
 							{
-								//if(len>MAX_CHUNK) len = MAX_CHUNK;                              
-								//if((iWrote+len)>lRequestLength) len = lRequestLength-iWrote;
-								//byte[] output = new byte[len];                              
-								int iRead = fin.read(output);              
-								if(iRead>0) foutBS.write(output, 0, iRead);
-
+								foutBS.write(output, 0, iRead);
 								lTotalOut += iRead;
 								iWrote += iRead;
 								if(!m_http_server.isRunning()) throw new InterruptedException("Server is shutting down");
@@ -2377,22 +2375,13 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 				byte bufOutput[] = new byte[MAX_CHUNK];				
 				is.skip(lFirstByteInRange);
 
-				while(is.available() > 0)
+				int iRead;
+				while((iRead=is.read(bufOutput)) > 0)
 				{
-					int iRead = is.read(bufOutput);
-					if(iRead>0)
-					{
-						//System.out.println("lTotalOut="+lTotalOut+" iRead="+iRead+" lEndRange="+lEndRange);
-						//if((lTotalOut+iRead)>iContentLength) iRead = (int)(iContentLength-lTotalOut);
-						//if(iRead<=0) break;
-						m_os.write(bufOutput, 0, iRead);
-						m_http_server.updateBytesServed(iRead);   
-						lTotalOut += iRead;
-						if(!m_http_server.isRunning()) throw new InterruptedException("Server is shutting down");
-					}
-					else
-						break;
-					//System.out.println("here4");
+					m_os.write(bufOutput, 0, iRead);
+					m_http_server.updateBytesServed(iRead);
+					lTotalOut += iRead;
+					if(!m_http_server.isRunning()) throw new InterruptedException("Server is shutting down");
 				}
 				//System.out.println("Wrote: "+lTotalOut);
 				m_http_server.incrementStatistic(HTTP.STATISTIC_KEY_BYTESOUTPERHOUR, lTotalOut);
@@ -2467,19 +2456,14 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 	private void sendStreamToFile(InputStream is, File fOriginal) throws IOException
 	{
 		final int MAX_CHUNK=200000;
-		int len=0;
-		int iTotalWrote=0;
+		//int iTotalWrote=0;
 		FileOutputStream fout = new FileOutputStream(fOriginal);
-		//System.out.println("skipping "+lSkip+" bytes");
-		//long lStart = System.currentTimeMillis();
-		while((len=is.available()) > 0)
+		byte output[] = new byte[MAX_CHUNK];
+		int iRead;
+		while((iRead=is.read(output)) > 0)
 		{
-			if(len > MAX_CHUNK) len = MAX_CHUNK;          
-			byte output[] = new byte[len];
-
-			int iRead = is.read(output);
 			fout.write(output, 0, iRead);
-			iTotalWrote+=iRead;
+			//iTotalWrote+=iRead;
 		}
 		fout.flush();
 		fout.close();
@@ -2883,18 +2867,20 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 				String sExpiresGMT = Util.formatDate(dtExpires, LAST_MOD_DATE, Locale.UK, m_tzGMT);
 				document.setExtraHeaderValue("Expires", sExpiresGMT, true);
 				
-				addCacheControlHeader(document, null);
+				addCacheControlHeader(document, null, false);
 			}
 			RequestReturnCode = RET_OK;
 		}
 		return RequestReturnCode;
 	}
 	
-	private void addCacheControlHeader(HTMLDocument document, ArrayList<String> headers)
+	private void addCacheControlHeader(HTMLDocument document, ArrayList<String> headers, boolean bIsCacheNoStore)
 	{
 		int iMaxEpirySeconds = m_http_server.getMaxExpirySeconds();
-		//Cache-Control: max-age=533280
-		String sCacheValue = "max-age="+iMaxEpirySeconds + " must-revalidate";
+		if(iMaxEpirySeconds<0) iMaxEpirySeconds = 0;
+		//Cache-Control: max-age=533280 must-revalidate
+		//Note: firefox has a crazy back forward cache which aggressively caches pages. no-store added to prevent caching of pages and actions
+		String sCacheValue = bIsCacheNoStore ? "no-store" : "max-age="+iMaxEpirySeconds + ", must-revalidate";
 		
 		if(document!=null)
 		{			
@@ -2966,10 +2952,11 @@ public class HTTPRequestManager implements pmaThreadInterface, ErrorDetect
 		return m_http_server.getDesignElement(szAppGroup, szApplication, szDesignName, iType);
 	}
 
+	/*
 	public DesignElement getDesignElement(SessionContext pSession, String szApplication, String szAppGroup, String szDesignName, int iType)
 	{
 		return m_http_server.getDesignElement(szAppGroup, szApplication, szDesignName, iType);
-	}
+	}*/
 
 
 

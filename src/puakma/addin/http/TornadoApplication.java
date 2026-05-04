@@ -163,7 +163,7 @@ public class TornadoApplication implements ErrorDetect
 		try
 		{
 			cx = m_pSystem.getSystemConnection();        
-			stmt = cx.prepareStatement(sQuery);
+			stmt = cx.prepareStatement(sQuery, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
 			stmt.setString(1, m_sAppName);
 			if(bHasGroup) stmt.setString(2, m_sAppGroup);			
 			rs = stmt.executeQuery();
@@ -436,6 +436,7 @@ public class TornadoApplication implements ErrorDetect
 	 */
 	public DesignElement getDesignElement(String sDesignName, int iType)
 	{    
+		long lStart = System.currentTimeMillis();
 		if(sDesignName==null) return null;
 		int iSlashPos = -1;
 		DesignElement design = getDesignElementFromCache(sDesignName, iType);
@@ -522,13 +523,7 @@ public class TornadoApplication implements ErrorDetect
 				while (rs.next())
 				{
 					design.addParameter(rs.getString("ParamName"), rs.getString("ParamValue"));
-				}
-
-				//The binary data specified paths to other design elements to "merge" into this one element
-				if(design.getParameterValue("CompositeElement").equals("1"))
-				{
-					createCompositeDesignElement(design);
-				}
+				}				
 
 				//System.out.println(design.toString());
 				//if(bufSource!=null) System.out.println(String.valueOf(bufSource));
@@ -547,6 +542,13 @@ public class TornadoApplication implements ErrorDetect
 			Util.closeJDBC(stmt);
 			m_pSystem.releaseSystemConnection(cx);
 		}
+		
+		//The binary data specified paths to other design elements to "merge" into this one element
+		if(design!=null && design.getParameterValue("CompositeElement").equals("1"))
+		{
+			createCompositeDesignElement(design);
+		}
+		
 
 		final String LOGIN_PAGE = "$Login";
 		//ok, we're after the login page so try to get it from the jar if the default login page in /puakma.pma
@@ -587,7 +589,10 @@ public class TornadoApplication implements ErrorDetect
 		}//if read from classpath
 
 		if(design==null && sDesignName!=null && !sDesignName.equalsIgnoreCase(LOGIN_PAGE))
-			m_pSystem.doError("HTTPServer.DesignNotFound", new String[]{m_sAppGroup,m_sAppName,sDesignName, ""+iType}, this);
+		{
+			long lDiffMS = System.currentTimeMillis() - lStart;
+			m_pSystem.doError("HTTPServer.DesignNotFound", new String[]{m_sAppGroup,m_sAppName,sDesignName, String.valueOf(iType), String.valueOf(lDiffMS) }, this);
+		}
 
 		if(design!=null) 
 		{
